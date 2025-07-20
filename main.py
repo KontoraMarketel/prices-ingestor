@@ -6,13 +6,13 @@ import os
 from aiokafka import AIOKafkaConsumer, AIOKafkaProducer
 
 from fetch_data import fetch_data
-from storage import upload_to_minio, download_from_minio
+from storage import upload_to_minio
 
 logging.basicConfig(level=logging.INFO)
 
 BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS")
 CONSUMER_TOPIC = os.getenv("KAFKA_CONSUMER_TOPIC")
-PRODUCER_TOPIC = os.getenv("KAFKA_PRODUCER_STG_ADS_INFO_TASKS")
+PRODUCER_TOPIC = os.getenv("KAFKA_PRODUCER_STG_PRICES_TASKS")
 MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT")
 MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY")
 MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY")
@@ -23,22 +23,11 @@ async def handle_message(msg):
     task_id = msg["task_id"]
     api_token = msg["wb_token"]
     load_date = msg["load_date"]
-    minio_key = msg["minio_key"]
 
     logging.info(f"Start processing task {task_id}")
 
-    campaigns_ids = await download_from_minio(
-        endpoint_url=MINIO_ENDPOINT,
-        access_key=MINIO_ACCESS_KEY,
-        secret_key=MINIO_SECRET_KEY,
-        bucket=MINIO_BUCKET,
-        key=minio_key,
-    )
-
-    logging.info(f"Campaigns IDs: {campaigns_ids}")
-
-    data = await fetch_data(api_token, campaigns_ids)
-    filename = "ads_info.json"
+    data = await fetch_data(api_token)
+    filename = "prices.json"
     prefix = f"{load_date}/{task_id}/"
     minio_key = prefix + filename
 

@@ -1,22 +1,32 @@
-import asyncio
-
 import aiohttp
 
-from utils import chunked
-
-GET_ALL_ADS_URL = "https://advert-api.wildberries.ru/adv/v1/promotion/count"
-GET_ADS_STATS_URL = "https://advert-api.wildberries.ru/adv/v2/fullstats"
-GET_ADS_INFO_URL = "https://advert-api.wildberries.ru/adv/v1/promotion/adverts"
+GET_ALL_PRICES = "https://discounts-prices-api.wildberries.ru/api/v2/list/goods/filter"
 
 
-async def fetch_data(api_token: str, campaign_ids: list) -> list:
-    headers = {"Authorization": api_token}
+async def fetch_data(api_token: str) -> list:
+    headers = {
+        "Authorization": api_token
+    }
+    limit = 1000
+    offset = 0
     result = []
+
     async with aiohttp.ClientSession(headers=headers) as session:
-        for batch in chunked(campaign_ids, 50):
-            async with session.post(GET_ADS_INFO_URL, json=batch) as response:
+        while True:
+            params = {
+                "limit": limit,
+                "offset": offset,
+            }
+
+            async with session.get(GET_ALL_PRICES, params=params) as response:
                 data = await response.json()
                 response.raise_for_status()
-                result.extend(data)
-            await asyncio.sleep(0.2)
-        return result
+                goods = data.get("data", {}).get("listGoods", [])
+
+                if not goods:
+                    break
+
+                result.extend(goods)
+                offset += limit
+
+    return result
